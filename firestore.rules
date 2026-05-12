@@ -12,75 +12,45 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     
     function isValidId(id) { 
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+      return id is string && id.size() <= 128; 
     }
 
     function isMemberOfChat(chatId) {
-      // In our simple format, chatId is uid_uid
-      // While it's slightly simplified, we require the user's UID to be *part* of the chatId.
-      // E.g. uid1_uid2 contains uid1 or uid2.
-      return request.auth.uid in chatId.split('_');
-    }
-
-    function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'username', 'status', 'lastSeen']) 
-        && data.uid == request.auth.uid
-        && data.username is string && data.username.size() <= 50
-        && data.status is string && data.status.size() <= 10
-        && data.lastSeen is number;
-    }
-
-    function isValidMessage(data) {
-      return data.keys().hasAll(['text', 'senderId', 'createdAt'])
-        && data.text is string && data.text.size() <= 2000
-        && data.senderId == request.auth.uid
-        && data.createdAt == request.time;
-    }
-
-    function isValidCall(data) {
-      return data.keys().hasAll(['status', 'callerId', 'calleeId', 'updatedAt'])
-        && data.status is string && data.status.size() <= 20
-        && data.callerId is string && data.callerId.size() <= 128
-        && data.calleeId is string && data.calleeId.size() <= 128
-        && data.updatedAt == request.time;
-    }
-
-    function isValidIceCandidate(data) {
-      return data.keys().hasAll(['candidate', 'sdpMid', 'sdpMLineIndex', 'senderId'])
-        && data.candidate is string && data.candidate.size() <= 2000
-        && data.sdpMid is string && data.sdpMid.size() <= 100
-        && data.sdpMLineIndex is number
-        && data.senderId == request.auth.uid;
+      // Check if user is in members array (new system)
+      // Or if UID is part of chatId (legacy 1v1 system fallback)
+      return (isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members))
+             || (request.auth.uid in chatId.split('_'));
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn() && isValidId(userId);
-      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming());
-      allow update: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['username', 'photoUrl', 'status', 'lastSeen']);
+      // Allow searching users by email, username, or phone
+      allow list: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && userId == request.auth.uid;
+      allow update: if isSignedIn() && userId == request.auth.uid;
+      
+      match /contacts/{contactId} {
+        allow read, write: if isSignedIn() && userId == request.auth.uid;
+      }
     }
 
     match /chats/{chatId} {
-      allow read: if isSignedIn() && isValidId(chatId) && isMemberOfChat(chatId);
-      allow create: if false; // implicitly created by messages for simplicity, but could be created if needed
-      allow update: if false;
+      allow read: if isSignedIn() && (request.auth.uid in existing().members);
+      allow create: if isSignedIn() && (request.auth.uid in incoming().members);
+      allow update: if isSignedIn() && (request.auth.uid in existing().members);
       
       match /messages/{messageId} {
-        allow read: if isSignedIn() && isValidId(chatId) && isMemberOfChat(chatId) && isValidId(messageId);
-        // Only allow creation inside the chat if the user is part of the chat ID string.
-        allow create: if isSignedIn() && isValidId(chatId) && isMemberOfChat(chatId) && isValidId(messageId) && isValidMessage(incoming());
+        allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members);
+        allow create: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members);
       }
     }
 
     match /calls/{callId} {
-      allow read: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId);
-      allow create: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId) && isValidCall(incoming());
-      allow update: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId)
-        && incoming().diff(existing()).affectedKeys().hasAny(['status', 'offer', 'answer', 'updatedAt'])
-        && incoming().updatedAt == request.time;
+      // Allow calls if user is one of the parties
+      allow read, write: if isSignedIn() && (request.auth.uid == existing().callerId || request.auth.uid == existing().calleeId || request.auth.uid == incoming().callerId || request.auth.uid == incoming().calleeId);
       
       match /candidates/{candidateId} {
-        allow read: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId) && isValidId(candidateId);
-        allow create: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId) && isValidId(candidateId) && isValidIceCandidate(incoming());
+        allow read, write: if isSignedIn();
       }
     }
   }
