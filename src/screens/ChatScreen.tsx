@@ -160,11 +160,15 @@ export default function ChatScreen() {
                 <span className="text-[10px] mb-1 opacity-70 font-bold">{m.senderName}</span>
               )}
               <div
-                className={`max-w-[85%] p-3 border ${isMe ? "border-[var(--primary-color)] bg-[var(--primary-color)] bg-opacity-10" : "border-dashed border-[var(--primary-color)] opacity-80"}`}
+                className={`max-w-[85%] p-3 border ${
+                  isMe 
+                    ? "border-[var(--primary-color)] bg-[var(--primary-color)] text-[var(--bg-color)] shadow-[0_0_10px_rgba(51,255,0,0.3)]" 
+                    : "border-dashed border-[var(--primary-color)] bg-[var(--secondary-bg)] text-[var(--text-color)] opacity-90"
+                }`}
               >
-                <div className="text-sm font-mono whitespace-pre-wrap">{m.text}</div>
+                <div className="text-sm font-mono whitespace-pre-wrap break-words">{m.text}</div>
               </div>
-              <span className="text-[10px] mt-1 opacity-50">
+              <span className="text-[10px] mt-1 opacity-50 px-1">
                 {m.createdAt ? format(m.createdAt.toDate(), "HH:mm") : "..."}
               </span>
             </div>
