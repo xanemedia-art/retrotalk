@@ -67,7 +67,7 @@ export default function MainLayout() {
           <div className="border-2 border-[var(--primary-color)] p-8 text-center bg-[var(--bg-color)] shadow-[0_0_20px_var(--primary-color)] animate-pulse">
             <h2 className="text-xl font-bold mb-4">INCOMING CALL...</h2>
             <div className="mb-8">
-              UNKNOWN ID: {incomingCall.callerId.substring(0, 8)}
+              ENTER UNIQUE ID...: {incomingCall.callerId.substring(0, 8)}
             </div>
             <div className="flex gap-4">
               <button

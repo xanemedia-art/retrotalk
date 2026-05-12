@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useStore, Theme } from "../lib/store";
 import { Monitor, Volume2, Power, User, Check, AlertCircle } from "lucide-react";
-import { logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { logout, db } from "../lib/firebase";
+import { doc, updateDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 
 export default function SettingsScreen() {
   const {
@@ -35,10 +35,26 @@ export default function SettingsScreen() {
     setUpdating(true);
     setMessage(null);
     try {
+      const lowerName = newUsername.toLowerCase();
+      
+      // Check for uniqueness
+      const q = query(
+        collection(db, "users"),
+        where("usernameLower", "==", lowerName),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty && querySnapshot.docs[0].id !== user.uid) {
+        setMessage({ type: "error", text: "ID ALREADY CLAIMED BY ANOTHER ENTITY." });
+        setUpdating(false);
+        return;
+      }
+
       const userRef = doc(db, "users", user.uid);
       const updates = {
         username: newUsername,
-        usernameLower: newUsername.toLowerCase(),
+        usernameLower: lowerName,
       };
       
       await updateDoc(userRef, updates);
@@ -49,7 +65,7 @@ export default function SettingsScreen() {
       
       setMessage({ type: "success", text: "IDENTITY PARAMETERS UPDATED." });
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
+      console.error(err);
       setMessage({ type: "error", text: "REGISTRY UPDATE FAILED." });
     } finally {
       setUpdating(false);

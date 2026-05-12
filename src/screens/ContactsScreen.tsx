@@ -108,20 +108,20 @@ export default function ContactsScreen() {
 
       {/* Search Section */}
       <form onSubmit={handleSearch} className="mb-6">
-        <div className="relative">
+        <div className="flex gap-2">
           <input
             type="text"
-            placeholder="SEARCH BY EMAIL OR USERNAME..."
-            className="w-full bg-transparent border-2 border-[var(--primary-color)] p-3 pr-12 focus:outline-none focus:shadow-[0_0_10px_var(--primary-color)] placeholder:opacity-50"
+            placeholder="ENTER UNIQUE ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 bg-black border border-[var(--primary-color)] p-4 font-mono text-[var(--primary-color)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-color)]"
           />
-          <button 
+          <button
             type="submit"
             disabled={searching}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-[var(--primary-color)] hover:text-[var(--bg-color)] transition-colors"
+            className="p-4 border border-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-[var(--bg-color)] disabled:opacity-50 transition-colors"
           >
-            <Search size={20} />
+            {searching ? <Loader2 className="animate-spin" /> : <Search size={20} />}
           </button>
         </div>
         {error && <p className="text-red-500 text-xs mt-2 animate-pulse">{error}</p>}
