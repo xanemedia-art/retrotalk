@@ -1,33 +1,125 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { LogOut, Users, Settings, MessageSquare, Phone } from "lucide-react";
 import { logout, db } from "../lib/firebase";
 import { useStore } from "../lib/store";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, limit, orderBy } from "firebase/firestore";
+import { LocalNotifications } from "@capacitor/local-notifications";
+
+const playRetroBeep = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch (e) {}
+};
+
+const playRingtone = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    for (let i = 0; i < 20; i++) {
+      gain.gain.setValueAtTime(0.1, ctx.currentTime + i * 0.4);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.4 + 0.2);
+    }
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 8);
+    return { stop: () => { try { osc.stop(); ctx.close(); } catch(e){} } };
+  } catch(e) { return { stop: () => {} }; }
+};
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile } = useStore();
   const [incomingCall, setIncomingCall] = useState<any>(null);
+  const ringtoneRef = useRef<any>(null);
+  const lastMessageRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!user) return;
-    
-    const q = query(
+
+    // Incoming Call Listener
+    const qCalls = query(
       collection(db, "calls"),
       where("calleeId", "==", user.uid),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      // Find the first incoming call that is active
+    const unsubCalls = onSnapshot(qCalls, (snap) => {
       const callDoc = snap.docs.find((d) => d.data().status === "calling");
       if (callDoc) {
-        setIncomingCall({ id: callDoc.id, ...callDoc.data() });
+        const callData = { id: callDoc.id, ...callDoc.data() };
+        setIncomingCall(callData);
+        
+        if (!ringtoneRef.current) {
+          ringtoneRef.current = playRingtone();
+          LocalNotifications.schedule({
+            notifications: [{
+              title: "INCOMING TRANSMISSION",
+              body: `Incoming link from ${callData.callerId?.substring(0, 8) || "UNKNOWN"}`,
+              id: 1,
+            }]
+          });
+        }
       } else {
         setIncomingCall(null);
+        if (ringtoneRef.current) {
+          ringtoneRef.current.stop();
+          ringtoneRef.current = null;
+        }
       }
     });
-    return unsub;
+
+    // Global Message Listener (via Chats)
+    const qChats = query(
+      collection(db, "chats"),
+      where("members", "array-contains", user.uid),
+    );
+    const unsubChats = onSnapshot(qChats, (snap) => {
+      snap.docChanges().forEach((change) => {
+        if (change.type === "modified") {
+          const chat = change.doc.data();
+          const lastMsgAt = chat.lastMessageAt?.toMillis();
+          const chatId = change.doc.id;
+          
+          if (lastMsgAt && (!lastMessageRef.current[chatId] || lastMsgAt > lastMessageRef.current[chatId])) {
+            if (chat.lastSenderId !== user.uid) {
+              playRetroBeep();
+              LocalNotifications.schedule({
+                notifications: [{
+                  title: "NEW SIGNAL",
+                  body: chat.lastMessage || "Incoming data packet...",
+                  id: 2,
+                }]
+              });
+            }
+            lastMessageRef.current[chatId] = lastMsgAt;
+          }
+        }
+      });
+    });
+
+    return () => {
+      unsubCalls();
+      unsubChats();
+      if (ringtoneRef.current) ringtoneRef.current.stop();
+    };
   }, [user]);
 
   const acceptCall = () => {
