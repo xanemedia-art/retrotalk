@@ -137,12 +137,23 @@ export async function searchUsers(searchTerm: string) {
   // Also try searching by username if email search fails
   const q2 = query(
     usersRef,
-    where("username", "==", searchTerm),
+    where("usernameLower", "==", searchTerm.toLowerCase()),
     limit(1)
   );
   const querySnapshot2 = await getDocs(q2);
   if (!querySnapshot2.empty) {
     return querySnapshot2.docs[0].data();
+  }
+
+  // Finally try phone number
+  const q3 = query(
+    usersRef,
+    where("phoneNumber", "==", searchTerm),
+    limit(1)
+  );
+  const querySnapshot3 = await getDocs(q3);
+  if (!querySnapshot3.empty) {
+    return querySnapshot3.docs[0].data();
   }
   
   return null;

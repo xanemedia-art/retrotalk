@@ -38,11 +38,14 @@ export default function App() {
         try {
           const profileDoc = await getDoc(doc(db, "users", u.uid));
           if (!profileDoc.exists()) {
+            const username = u.displayName || "User-" + u.uid.substring(0, 5);
             await setDoc(doc(db, "users", u.uid), {
               uid: u.uid,
-              username: u.displayName || "User-" + u.uid.substring(0, 5),
+              username: username,
+              usernameLower: username.toLowerCase(),
               photoUrl: u.photoURL,
               email: u.email,
+              phoneNumber: u.phoneNumber,
               status: "online",
               lastSeen: Date.now(),
             });
