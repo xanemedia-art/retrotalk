@@ -113,58 +113,75 @@ export default function CallScreen() {
         data?.status === "rejected" ||
         (data?.status === "calling" && data.callerId === user.uid);
 
-      if (isCaller) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+      console.log("Call Role:", isCaller ? "CALLER" : "CALLEE");
 
-        await setDoc(callDoc, {
-          offer: { type: offer.type, sdp: offer.sdp },
-          callerId: user.uid,
-          calleeId: foundOtherId,
-          status: "calling",
-          updatedAt: serverTimestamp(),
-        });
+      try {
+        if (isCaller) {
+          console.log("Generating Offer...");
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
 
-        setCallStatus("RINGING...");
-
-        unsubCall = onSnapshot(callDoc, (docSnap) => {
-          const docData = docSnap.data();
-          if (!docData) return;
-          if (
-            docData.status === "answered" &&
-            docData.answer &&
-            !pc.currentRemoteDescription
-          ) {
-            pc.setRemoteDescription(new RTCSessionDescription(docData.answer));
-            setCallStatus("CONNECTED [SECURED]");
-          }
-          if (docData.status === "rejected") setCallStatus("CALL REJECTED");
-          if (docData.status === "ended") {
-            setCallStatus("ENDED");
-            setTimeout(() => navigate(-1), 1500);
-          }
-        });
-      } else {
-        setCallStatus("ANSWERING...");
-        if (data?.offer) {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-
-          await updateDoc(callDoc, {
-            answer: { type: answer.type, sdp: answer.sdp },
-            status: "answered",
+          console.log("Uploading Offer to Mainframe...");
+          await setDoc(callDoc, {
+            offer: { type: offer.type, sdp: offer.sdp },
+            callerId: user.uid,
+            calleeId: foundOtherId,
+            status: "calling",
             updatedAt: serverTimestamp(),
           });
-          setCallStatus("CONNECTED [SECURED]");
-        }
 
-        unsubCall = onSnapshot(callDoc, (docSnap) => {
-          if (docSnap.data()?.status === "ended") {
-            setCallStatus("ENDED");
-            setTimeout(() => navigate(-1), 1500);
+          setCallStatus("RINGING...");
+
+          unsubCall = onSnapshot(callDoc, (docSnap) => {
+            const docData = docSnap.data();
+            if (!docData) return;
+            console.log("Signal Status Update:", docData.status);
+            
+            if (
+              docData.status === "answered" &&
+              docData.answer &&
+              pc.signalingState !== "stable"
+            ) {
+              console.log("Answer Received. Connecting...");
+              pc.setRemoteDescription(new RTCSessionDescription(docData.answer))
+                .then(() => setCallStatus("CONNECTED [SECURED]"))
+                .catch(e => console.error("Remote desc error", e));
+            }
+            if (docData.status === "rejected") setCallStatus("CALL REJECTED");
+            if (docData.status === "ended") {
+              setCallStatus("ENDED");
+              setTimeout(() => navigate(-1), 1500);
+            }
+          });
+        } else {
+          console.log("Incoming Call detected. Answering...");
+          setCallStatus("ANSWERING...");
+          if (data?.offer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            console.log("Uploading Answer...");
+            await updateDoc(callDoc, {
+              answer: { type: answer.type, sdp: answer.sdp },
+              status: "answered",
+              updatedAt: serverTimestamp(),
+            });
+            setCallStatus("CONNECTED [SECURED]");
           }
-        });
+
+          unsubCall = onSnapshot(callDoc, (docSnap) => {
+            const docData = docSnap.data();
+            console.log("Signal Status Update (Callee):", docData?.status);
+            if (docData?.status === "ended") {
+              setCallStatus("ENDED");
+              setTimeout(() => navigate(-1), 1500);
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Signaling Error:", err);
+        setCallStatus("ERROR: SIGNALING FAILURE");
       }
 
       unsubCandidates = onSnapshot(candidatesCollection, (snap) => {
