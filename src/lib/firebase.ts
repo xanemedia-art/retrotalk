@@ -54,21 +54,6 @@ export const loginWithPhone = async (phoneNumber: string, appVerifier: Recaptcha
 
 export const logout = () => signOut(auth);
 
-export async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, "test", "connection"));
-    console.log("Firebase Connection: OK");
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("the client is offline")
-    ) {
-      console.error("Please check your Firebase configuration.");
-    }
-  }
-}
-testConnection();
-
 export enum OperationType {
   CREATE = "create",
   UPDATE = "update",

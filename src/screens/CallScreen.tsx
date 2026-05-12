@@ -152,6 +152,9 @@ export default function CallScreen() {
               setCallStatus("ENDED");
               setTimeout(() => navigate(-1), 1500);
             }
+          }, (err) => {
+            console.error("Call Snapshot Error:", err);
+            setCallStatus("ERROR: SIGNALING ACCESS DENIED");
           });
         } else {
           console.log("Incoming Call detected. Answering...");
@@ -193,6 +196,8 @@ export default function CallScreen() {
             }
           }
         });
+      }, (err) => {
+        console.error("Candidates Snapshot Error:", err);
       });
     };
 
