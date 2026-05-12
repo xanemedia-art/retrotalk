@@ -72,7 +72,7 @@ export default function MainLayout() {
           LocalNotifications.schedule({
             notifications: [{
               title: "INCOMING TRANSMISSION",
-              body: `Incoming link from ${callData.callerId?.substring(0, 8) || "UNKNOWN"}`,
+              body: `Incoming link from ${(callData as any).callerId?.substring(0, 8) || "UNKNOWN"}`,
               id: 1,
             }]
           });
@@ -159,7 +159,7 @@ export default function MainLayout() {
           <div className="border-2 border-[var(--primary-color)] p-8 text-center bg-[var(--bg-color)] shadow-[0_0_20px_var(--primary-color)] animate-pulse">
             <h2 className="text-xl font-bold mb-4">INCOMING CALL...</h2>
             <div className="mb-8">
-              ENTER UNIQUE ID...: {incomingCall.callerId.substring(0, 8)}
+              ENTER UNIQUE ID...: {(incomingCall as any).callerId?.substring(0, 8)}
             </div>
             <div className="flex gap-4">
               <button
