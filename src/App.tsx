@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useStore } from "./lib/store";
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 import BootScreen from "./screens/BootScreen";
 import LoginScreen from "./screens/LoginScreen";
@@ -81,7 +81,7 @@ export default function App() {
       {crtEnabled && (
         <div className="crt scanlines pointer-events-none fixed inset-0 z-50"></div>
       )}
-      <BrowserRouter>
+      <HashRouter>
         {isInitializing ? (
           <BootScreen />
         ) : !user ? (
@@ -99,7 +99,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         )}
-      </BrowserRouter>
+      </HashRouter>
     </div>
   );
 }
