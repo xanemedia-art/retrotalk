@@ -46,6 +46,7 @@ export default function CallScreen() {
     const setup = async () => {
       setCallStatus("INITIALIZING SECURE CHANNEL...");
 
+      let foundOtherId: string | null = null;
       try {
         const chatSnap = await getDoc(doc(db, "chats", chatId));
         if (!chatSnap.exists()) {
@@ -53,7 +54,7 @@ export default function CallScreen() {
           return;
         }
         const chatData = chatSnap.data();
-        const foundOtherId = chatData.members.find((m: string) => m !== user.uid);
+        foundOtherId = chatData.members.find((m: string) => m !== user.uid);
         
         if (!foundOtherId) {
           setCallStatus("ERROR: NO PEER DETECTED");
@@ -82,7 +83,7 @@ export default function CallScreen() {
       const pc = new RTCPeerConnection(servers);
       peerConnection.current = pc;
 
-      localStream.current.getTracks().forEach((track) => {
+      localStream.current!.getTracks().forEach((track) => {
         pc.addTrack(track, localStream.current!);
       });
 
