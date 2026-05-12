@@ -129,7 +129,10 @@ export default function ContactsScreen() {
 
       {/* Search Result Overlay/Box */}
       {searchResult && (
-        <div className="mb-6 border-2 border-dashed border-[var(--primary-color)] p-4 bg-[var(--primary-color)] bg-opacity-5">
+        <div 
+          className="mb-6 border-2 border-dashed border-[var(--primary-color)] p-4"
+          style={{ backgroundColor: 'rgba(51, 255, 0, 0.05)' }}
+        >
           <div className="flex justify-between items-start mb-2">
             <span className="text-xs font-bold uppercase">[RESULT FOUND]</span>
             <button onClick={() => setSearchResult(null)} className="hover:text-red-500">
