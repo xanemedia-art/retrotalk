@@ -94,7 +94,7 @@ export default function MainLayout() {
           ringtoneRef.current = playRingtone();
           showNotification(
             "INCOMING TRANSMISSION",
-            `Incoming link from ${callData.callerName || callData.callerId?.substring(0, 8) || "UNKNOWN"}`,
+            `Incoming link from ${(callData as any).callerName || (callData as any).callerId?.substring(0, 8) || "UNKNOWN"}`,
             1
           );
         }

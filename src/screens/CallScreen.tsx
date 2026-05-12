@@ -24,7 +24,7 @@ const servers = {
 
 export default function CallScreen() {
   const { callId: chatId } = useParams(); 
-  const { user } = useStore();
+  const { user, profile } = useStore();
   const navigate = useNavigate();
   const [muted, setMuted] = useState(false);
   const [callStatus, setCallStatus] = useState("CONNECTING...");
