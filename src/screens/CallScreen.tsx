@@ -125,6 +125,7 @@ export default function CallScreen() {
           await setDoc(callDoc, {
             offer: { type: offer.type, sdp: offer.sdp },
             callerId: user.uid,
+            callerName: profile?.username || "XANE_USER",
             calleeId: foundOtherId,
             status: "calling",
             updatedAt: serverTimestamp(),

@@ -94,7 +94,7 @@ export default function MainLayout() {
           ringtoneRef.current = playRingtone();
           showNotification(
             "INCOMING TRANSMISSION",
-            `Incoming link from ${(callData as any).callerId?.substring(0, 8) || "UNKNOWN"}`,
+            `Incoming link from ${callData.callerName || callData.callerId?.substring(0, 8) || "UNKNOWN"}`,
             1
           );
         }
@@ -122,8 +122,9 @@ export default function MainLayout() {
           if (lastMsgAt && (!lastMessageRef.current[chatId] || lastMsgAt > lastMessageRef.current[chatId])) {
             if (chat.lastSenderId !== user.uid) {
               playRetroBeep();
+              const senderName = chat.memberDetails?.[chat.lastSenderId]?.username || "USER";
               showNotification(
-                "NEW SIGNAL",
+                `SIGNAL FROM ${senderName.toUpperCase()}`,
                 chat.lastMessage || "Incoming data packet...",
                 2
               );
@@ -178,7 +179,7 @@ export default function MainLayout() {
           <div className="border-2 border-[var(--primary-color)] p-8 text-center bg-[var(--bg-color)] shadow-[0_0_20px_var(--primary-color)] animate-pulse">
             <h2 className="text-xl font-bold mb-4">INCOMING CALL...</h2>
             <div className="mb-8">
-              ENTER UNIQUE ID...: {(incomingCall as any).callerId?.substring(0, 8)}
+              FROM: {incomingCall.callerName || incomingCall.callerId?.substring(0, 8)}
             </div>
             <div className="flex gap-4">
               <button
