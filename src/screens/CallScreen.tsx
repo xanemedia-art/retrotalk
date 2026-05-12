@@ -201,7 +201,10 @@ export default function CallScreen() {
       });
     };
 
-    setup();
+    setup().catch(err => {
+      console.error("FATAL SETUP ERROR:", err);
+      setCallStatus("ERROR: SYSTEM FAILURE");
+    });
 
     return () => {
       unsubCall && unsubCall();

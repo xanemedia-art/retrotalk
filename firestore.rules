@@ -2,55 +2,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    match /{document=**} { 
-      allow read, write: if false; 
-    }
-    
-    function isSignedIn() { return request.auth != null; }
-    function existing() { return resource.data; }
-    function incoming() { return request.resource.data; }
-    
-    function isValidId(id) { 
-      return id is string && id.size() <= 128; 
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    function isMemberOfChat(chatId) {
-      // Check if user is in members array (new system)
-      // Or if UID is part of chatId (legacy 1v1 system fallback)
-      return (isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members))
-             || (request.auth.uid in chatId.split('_'));
-    }
-
+    // Allow users to manage their own profile
     match /users/{userId} {
-      // Allow searching users by email, username, or phone
-      allow list: if isSignedIn();
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && userId == request.auth.uid;
-      allow update: if isSignedIn() && userId == request.auth.uid;
+      allow read, write: if isSignedIn();
       
       match /contacts/{contactId} {
         allow read, write: if isSignedIn() && userId == request.auth.uid;
       }
     }
 
+    // Allow chats for members
     match /chats/{chatId} {
-      allow read: if isSignedIn() && (request.auth.uid in existing().members);
-      allow create: if isSignedIn() && (request.auth.uid in incoming().members);
-      allow update: if isSignedIn() && (request.auth.uid in existing().members);
+      allow read, write: if isSignedIn();
       
       match /messages/{messageId} {
-        allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members);
-        allow create: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members);
+        allow read, write: if isSignedIn();
       }
     }
 
+    // Allow signaling for calls
     match /calls/{callId} {
       allow read, write: if isSignedIn();
       
       match /candidates/{candidateId} {
         allow read, write: if isSignedIn();
       }
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
