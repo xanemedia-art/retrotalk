@@ -45,6 +45,18 @@ const playRingtone = () => {
   } catch(e) { return { stop: () => {} }; }
 };
 
+const showNotification = (title: string, body: string, id: number) => {
+  // Capacitor Native
+  LocalNotifications.schedule({
+    notifications: [{ title, body, id }]
+  }).catch(() => {
+    // Web Fallback
+    if (window.Notification && Notification.permission === "granted") {
+      new Notification(title, { body, icon: "/icon-192.png" });
+    }
+  });
+};
+
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,6 +66,17 @@ export default function MainLayout() {
   const lastMessageRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
+    // Request Notification Permissions
+    const requestPerms = async () => {
+      try {
+        if (window.Notification) {
+          await window.Notification.requestPermission();
+        }
+        await LocalNotifications.requestPermissions();
+      } catch (e) {}
+    };
+    requestPerms();
+    
     if (!user) return;
 
     // Incoming Call Listener
@@ -69,13 +92,11 @@ export default function MainLayout() {
         
         if (!ringtoneRef.current) {
           ringtoneRef.current = playRingtone();
-          LocalNotifications.schedule({
-            notifications: [{
-              title: "INCOMING TRANSMISSION",
-              body: `Incoming link from ${(callData as any).callerId?.substring(0, 8) || "UNKNOWN"}`,
-              id: 1,
-            }]
-          });
+          showNotification(
+            "INCOMING TRANSMISSION",
+            `Incoming link from ${(callData as any).callerId?.substring(0, 8) || "UNKNOWN"}`,
+            1
+          );
         }
       } else {
         setIncomingCall(null);
@@ -101,13 +122,11 @@ export default function MainLayout() {
           if (lastMsgAt && (!lastMessageRef.current[chatId] || lastMsgAt > lastMessageRef.current[chatId])) {
             if (chat.lastSenderId !== user.uid) {
               playRetroBeep();
-              LocalNotifications.schedule({
-                notifications: [{
-                  title: "NEW SIGNAL",
-                  body: chat.lastMessage || "Incoming data packet...",
-                  id: 2,
-                }]
-              });
+              showNotification(
+                "NEW SIGNAL",
+                chat.lastMessage || "Incoming data packet...",
+                2
+              );
             }
             lastMessageRef.current[chatId] = lastMsgAt;
           }
