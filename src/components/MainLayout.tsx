@@ -91,7 +91,7 @@ export default function MainLayout() {
       {/* Top Bar */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-[var(--primary-color)] px-4">
         <div className="flex items-center">
-          <span className="text-xl font-bold tracking-widest">RETROTALK</span>
+          <span className="text-xl font-bold tracking-widest">XANE Text</span>
         </div>
         <div className="flex items-center text-sm">
           <span className="mr-2 hidden sm:inline md:mr-4">

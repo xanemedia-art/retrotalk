@@ -102,7 +102,7 @@ export default function LoginScreen() {
         <div className="mb-8 flex flex-col items-center justify-center">
           <Terminal size={64} className="mb-4 animate-pulse" />
           <h1 className="text-4xl font-bold tracking-widest text-center">
-            RETROTALK
+            XANE Text
           </h1>
           <p className="mt-2 text-xs opacity-70 text-center uppercase">
             v1.2.0 GLOBAL MAINFRAME

@@ -11,8 +11,8 @@ export default function BootScreen() {
       "Award Plug and Play BIOS Extension v1.0A",
       "Initialize Plug and Play Cards...",
       "PNP Init Completed",
-      "Detecting IDE Primary Master ... RetroTalk OS",
-      "Starting RetroTalk Services...",
+      "Detecting IDE Primary Master ... XANE Text OS",
+      "Starting XANE Text Services...",
       "Establishing secure connection to mainframe...",
     ];
 

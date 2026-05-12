@@ -1,5 +1,5 @@
 {
-  "name": "RetroTalk",
+  "name": "XANE Text",
   "description": "A minimalist real-time messaging and voice calling platform inspired by retro aesthetics like CRT monitors and Windows 98.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []
