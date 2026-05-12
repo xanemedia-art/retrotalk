@@ -47,7 +47,10 @@ service cloud.firestore {
 
     match /calls/{callId} {
       // Allow calls if user is one of the parties
-      allow read, write: if isSignedIn() && (request.auth.uid == existing().callerId || request.auth.uid == existing().calleeId || request.auth.uid == incoming().callerId || request.auth.uid == incoming().calleeId);
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (request.auth.uid == existing().callerId || request.auth.uid == existing().calleeId);
+      allow create: if isSignedIn() && (request.auth.uid == incoming().callerId || request.auth.uid == incoming().calleeId);
+      allow update: if isSignedIn() && (request.auth.uid == existing().callerId || request.auth.uid == existing().calleeId);
       
       match /candidates/{candidateId} {
         allow read, write: if isSignedIn();

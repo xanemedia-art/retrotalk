@@ -17,7 +17,6 @@ export default function MainLayout() {
     const q = query(
       collection(db, "calls"),
       where("calleeId", "==", user.uid),
-      where("status", "==", "calling"),
     );
     const unsub = onSnapshot(q, (snap) => {
       // Find the first incoming call that is active
