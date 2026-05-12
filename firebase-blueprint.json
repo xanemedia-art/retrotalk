@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile containing basic info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "photoUrl": { "type": ["string", "null"] },
+        "email": { "type": ["string", "null"] },
+        "status": { "type": "string", "enum": ["online", "offline"] },
+        "lastSeen": { "type": "number" }
+      },
+      "required": ["uid", "username", "status", "lastSeen"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Chat channel between members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Individual message within a chat",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["text", "senderId", "createdAt"]
+    },
+    "Call": {
+      "title": "Call",
+      "description": "WebRTC Call Signaling",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["calling", "ringing", "answered", "rejected", "ended"] },
+        "callerId": { "type": "string" },
+        "calleeId": { "type": "string" },
+        "offer": { "type": ["object", "null"] },
+        "answer": { "type": ["object", "null"] },
+        "updatedAt": { "type": "object" }
+      },
+      "required": ["status", "callerId", "calleeId", "updatedAt"]
+    },
+    "IceCandidate": {
+      "title": "IceCandidate",
+      "description": "WebRTC Ice Candidate",
+      "type": "object",
+      "properties": {
+        "candidate": { "type": "string" },
+        "sdpMid": { "type": "string" },
+        "sdpMLineIndex": { "type": "number" },
+        "senderId": { "type": "string" }
+      },
+      "required": ["candidate", "sdpMid", "sdpMLineIndex", "senderId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles indexed by UID"
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/Chat" },
+      "description": "Chat channels"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages inside a specific chat"
+    },
+    "/calls/{callId}": {
+      "schema": { "$ref": "#/entities/Call" },
+      "description": "Call signaling data"
+    },
+    "/calls/{callId}/candidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/IceCandidate" },
+      "description": "ICE Candidates for a call"
+    }
+  }
+}

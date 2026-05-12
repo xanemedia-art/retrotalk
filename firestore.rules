@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /{document=**} { 
+      allow read, write: if false; 
+    }
+    
+    function isSignedIn() { return request.auth != null; }
+    function existing() { return resource.data; }
+    function incoming() { return request.resource.data; }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
+    function isMemberOfChat(chatId) {
+      // In our simple format, chatId is uid_uid
+      // While it's slightly simplified, we require the user's UID to be *part* of the chatId.
+      // E.g. uid1_uid2 contains uid1 or uid2.
+      return request.auth.uid in chatId.split('_');
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'username', 'status', 'lastSeen']) 
+        && data.uid == request.auth.uid
+        && data.username is string && data.username.size() <= 50
+        && data.status is string && data.status.size() <= 10
+        && data.lastSeen is number;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['text', 'senderId', 'createdAt'])
+        && data.text is string && data.text.size() <= 2000
+        && data.senderId == request.auth.uid
+        && data.createdAt == request.time;
+    }
+
+    function isValidCall(data) {
+      return data.keys().hasAll(['status', 'callerId', 'calleeId', 'updatedAt'])
+        && data.status is string && data.status.size() <= 20
+        && data.callerId is string && data.callerId.size() <= 128
+        && data.calleeId is string && data.calleeId.size() <= 128
+        && data.updatedAt == request.time;
+    }
+
+    function isValidIceCandidate(data) {
+      return data.keys().hasAll(['candidate', 'sdpMid', 'sdpMLineIndex', 'senderId'])
+        && data.candidate is string && data.candidate.size() <= 2000
+        && data.sdpMid is string && data.sdpMid.size() <= 100
+        && data.sdpMLineIndex is number
+        && data.senderId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && isValidId(userId);
+      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['username', 'photoUrl', 'status', 'lastSeen']);
+    }
+
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && isValidId(chatId) && isMemberOfChat(chatId);
+      allow create: if false; // implicitly created by messages for simplicity, but could be created if needed
+      allow update: if false;
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && isValidId(chatId) && isMemberOfChat(chatId) && isValidId(messageId);
+        // Only allow creation inside the chat if the user is part of the chat ID string.
+        allow create: if isSignedIn() && isValidId(chatId) && isMemberOfChat(chatId) && isValidId(messageId) && isValidMessage(incoming());
+      }
+    }
+
+    match /calls/{callId} {
+      allow read: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId);
+      allow create: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId) && isValidCall(incoming());
+      allow update: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId)
+        && incoming().diff(existing()).affectedKeys().hasAny(['status', 'offer', 'answer', 'updatedAt'])
+        && incoming().updatedAt == request.time;
+      
+      match /candidates/{candidateId} {
+        allow read: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId) && isValidId(candidateId);
+        allow create: if isSignedIn() && isValidId(callId) && isMemberOfChat(callId) && isValidId(candidateId) && isValidIceCandidate(incoming());
+      }
+    }
+  }
+}
