@@ -177,8 +177,11 @@ export async function getOrCreate1v1Chat(userA: any, userB: any) {
   if (!snap.empty) return snap.docs[0].id;
   
   const chatRef = await addDoc(collection(db, "chats"), {
-    name: `${userB.username}`, // Usually you'd store both but keep it simple
     members,
+    memberDetails: {
+      [userA.uid]: { username: userA.username },
+      [userB.uid]: { username: userB.username }
+    },
     type: "private",
     createdAt: serverTimestamp(),
     lastMessage: "",

@@ -94,12 +94,23 @@ export default function ChatScreen() {
     }
   };
 
+  const [otherUsername, setOtherUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!chatInfo || chatInfo.type === "group" || otherUsername) return;
+    const otherId = chatInfo.members?.find((m: string) => m !== user?.uid);
+    if (otherId && !chatInfo.memberDetails?.[otherId]) {
+      getDoc(doc(db, "users", otherId)).then(snap => {
+        if (snap.exists()) setOtherUsername(snap.data().username);
+      });
+    }
+  }, [chatInfo, user, otherUsername]);
+
   const getChatName = () => {
     if (!chatInfo) return "LOADING...";
     if (chatInfo.type === "group") return chatInfo.name;
-    // For 1v1, name might need to be filtered (the other person's name)
-    // For now we use the chat's stored name or a fallback
-    return chatInfo.name || "SECURE CHANNEL";
+    const otherId = chatInfo.members?.find((m: string) => m !== user?.uid);
+    return chatInfo.memberDetails?.[otherId]?.username || otherUsername || "SECURE_CHANNEL_" + chatId?.substring(0, 4);
   };
 
   return (

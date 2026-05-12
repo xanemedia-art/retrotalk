@@ -7,7 +7,9 @@ import {
   where, 
   onSnapshot, 
   orderBy,
-  limit 
+  limit,
+  getDoc,
+  doc
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useStore } from "../lib/store";
@@ -47,6 +49,36 @@ export default function ChatsListScreen() {
       handleFirestoreError(err, OperationType.LIST, "chats");
     }
   }, [user]);
+
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!user || chats.length === 0) return;
+
+    const missingUids = new Set<string>();
+    chats.forEach(chat => {
+      if (chat.type === "private") {
+        const otherId = chat.members.find((m: string) => m !== user.uid);
+        if (otherId && !chat.memberDetails?.[otherId] && !userMap[otherId]) {
+          missingUids.add(otherId);
+        }
+      }
+    });
+
+    if (missingUids.size > 0) {
+      const fetchProfiles = async () => {
+        const newMap = { ...userMap };
+        for (const uid of missingUids) {
+          const docSnap = await getDoc(doc(db, "users", uid));
+          if (docSnap.exists()) {
+            newMap[uid] = docSnap.data().username;
+          }
+        }
+        setUserMap(newMap);
+      };
+      fetchProfiles();
+    }
+  }, [chats, user, userMap]);
 
   return (
     <div className="flex h-full flex-col p-4 overflow-y-auto custom-scrollbar">
@@ -101,7 +133,11 @@ export default function ChatsListScreen() {
                 </div>
                 <div className="overflow-hidden">
                   <div className="font-bold uppercase truncate">
-                    {chat.name || "SECURE_CHANNEL_" + chat.id.substring(0, 4)}
+                    {(() => {
+                      if (chat.type === "group") return chat.name;
+                      const otherId = chat.members.find((m: string) => m !== user.uid);
+                      return chat.memberDetails?.[otherId]?.username || userMap[otherId] || "SECURE_CHANNEL_" + chat.id.substring(0, 4);
+                    })()}
                   </div>
                   <div className="text-xs opacity-70 group-hover:opacity-100 truncate italic">
                     {chat.lastMessage || "STATION_IDLE"}
