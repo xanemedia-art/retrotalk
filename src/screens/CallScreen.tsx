@@ -23,12 +23,13 @@ const servers = {
 };
 
 export default function CallScreen() {
-  const { callId } = useParams(); // target user ID
+  const { callId: chatId } = useParams(); 
   const { user } = useStore();
   const navigate = useNavigate();
   const [muted, setMuted] = useState(false);
   const [callStatus, setCallStatus] = useState("CONNECTING...");
   const [remoteUser, setRemoteUser] = useState<any>(null);
+  const [otherUserId, setOtherUserId] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -36,31 +37,44 @@ export default function CallScreen() {
   const localStream = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    if (!callId || !user) return;
+    if (!chatId || !user) return;
 
-    const roomPath = [user.uid, callId].sort().join("_");
-    const callDoc = doc(db, "calls", roomPath);
+    const callDoc = doc(db, "calls", chatId);
     let unsubCall: any = null;
     let unsubCandidates: any = null;
-
-    // Fetch target user info
-    getDoc(doc(db, "users", callId)).then((d) => {
-      if (d.exists()) setRemoteUser(d.data());
-    });
 
     const setup = async () => {
       setCallStatus("INITIALIZING SECURE CHANNEL...");
 
       try {
+        const chatSnap = await getDoc(doc(db, "chats", chatId));
+        if (!chatSnap.exists()) {
+          setCallStatus("ERROR: SIGNALING CHANNEL NOT FOUND");
+          return;
+        }
+        const chatData = chatSnap.data();
+        const foundOtherId = chatData.members.find((m: string) => m !== user.uid);
+        
+        if (!foundOtherId) {
+          setCallStatus("ERROR: NO PEER DETECTED");
+          return;
+        }
+        setOtherUserId(foundOtherId);
+
+        // Fetch target user info
+        getDoc(doc(db, "users", foundOtherId)).then((d) => {
+          if (d.exists()) setRemoteUser(d.data());
+        });
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: false,
           audio: true,
         });
         localStream.current = stream;
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+        // In this audio-only app, we don't need to show local video but keeping ref for consistency if needed
       } catch (err) {
         console.error("Mic access denied", err);
-        setCallStatus("ERROR: MICROPHONE ACCESS DENIED");
+        setCallStatus("ERROR: HARDWARE ACCESS DENIED");
         return;
       }
 
@@ -73,9 +87,9 @@ export default function CallScreen() {
       });
 
       pc.ontrack = (event) => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-        }
+        const remoteAudio = new Audio();
+        remoteAudio.srcObject = event.streams[0];
+        remoteAudio.play();
       };
 
       const candidatesCollection = collection(callDoc, "candidates");
@@ -105,7 +119,7 @@ export default function CallScreen() {
         await setDoc(callDoc, {
           offer: { type: offer.type, sdp: offer.sdp },
           callerId: user.uid,
-          calleeId: callId,
+          calleeId: foundOtherId,
           status: "calling",
           updatedAt: serverTimestamp(),
         });
@@ -120,10 +134,7 @@ export default function CallScreen() {
             docData.answer &&
             !pc.currentRemoteDescription
           ) {
-            const rtcSessionDescription = new RTCSessionDescription(
-              docData.answer,
-            );
-            pc.setRemoteDescription(rtcSessionDescription);
+            pc.setRemoteDescription(new RTCSessionDescription(docData.answer));
             setCallStatus("CONNECTED [SECURED]");
           }
           if (docData.status === "rejected") setCallStatus("CALL REJECTED");
@@ -175,7 +186,7 @@ export default function CallScreen() {
       localStream.current?.getTracks().forEach((t) => t.stop());
       peerConnection.current?.close();
     };
-  }, [callId, user]);
+  }, [chatId, user]);
 
   const toggleMute = () => {
     if (localStream.current) {
@@ -187,9 +198,8 @@ export default function CallScreen() {
   };
 
   const endCall = async () => {
-    if (!callId || !user) return;
-    const roomPath = [user.uid, callId].sort().join("_");
-    const callDoc = doc(db, "calls", roomPath);
+    if (!chatId || !user) return;
+    const callDoc = doc(db, "calls", chatId);
     try {
       await updateDoc(callDoc, {
         status: "ended",
@@ -201,10 +211,7 @@ export default function CallScreen() {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center p-8 bg-black text-[var(--primary-color)]">
-      {/* CRT effects automatically apply from global layout, but if we opened directly we might need to verify */}
-
       <div className="w-full max-w-sm border-2 border-[var(--primary-color)] p-8 text-center flex flex-col items-center relative">
-        {/* Animated rings for call */}
         <div className="absolute inset-0 border border-[var(--primary-color)] opacity-20 animate-ping rounded-full scale-110 -z-10"></div>
 
         <div className="mb-8 font-bold text-2xl uppercase tracking-widest">
@@ -231,16 +238,6 @@ export default function CallScreen() {
           </button>
         </div>
       </div>
-
-      {/* Hidden elements for WebRTC streams */}
-      <video
-        ref={localVideoRef}
-        autoPlay
-        muted
-        playsInline
-        className="hidden"
-      />
-      <video ref={remoteVideoRef} autoPlay playsInline className="hidden" />
     </div>
   );
 }

@@ -3,16 +3,17 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { LogOut, Users, Settings, MessageSquare, Phone } from "lucide-react";
 import { logout, db } from "../lib/firebase";
 import { useStore } from "../lib/store";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, user } = useStore();
+  const { user, profile } = useStore();
   const [incomingCall, setIncomingCall] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
+    
     const q = query(
       collection(db, "calls"),
       where("calleeId", "==", user.uid),
@@ -32,9 +33,7 @@ export default function MainLayout() {
 
   const acceptCall = () => {
     if (incomingCall) {
-      // Navigate to CallScreen, but we need to tell it who the OTHER person is.
-      // Since we are the callee, the other person is the callerId.
-      navigate(`/call/${incomingCall.callerId}`);
+      navigate(`/call/${incomingCall.id}`);
       setIncomingCall(null);
     }
   };
